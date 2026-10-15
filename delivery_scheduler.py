@@ -120,6 +120,33 @@ def schedule_multiple_drivers(deliveries: list[Delivery]) -> dict[int, list[Deli
     return driver_schedules
 
 
+def find_min_rejections(deliveries: list[Delivery]) -> tuple[int, list[Delivery]]:
+    """
+    Task C: Interview-Style Variant / Minimum Rejections (LeetCode 435).
+
+    Greedy Choice / Relation to Task A:
+        To minimize the number of rejected deliveries, we must maximize the
+        number of mutually compatible deliveries accepted by the single driver.
+        If the maximum number of compatible deliveries is k, then the minimum
+        number of deliveries that must be rejected is exactly n - k.
+
+    Time Complexity:
+        O(n log n) dominated by sorting in schedule_single_driver.
+    """
+    if not deliveries:
+        return 0, []
+
+    # Maximum compatible deliveries selected by greedy earliest-finish-time (Task A)
+    accepted = schedule_single_driver(deliveries)
+    accepted_ids = {d.id for d in accepted}
+
+    # The rejected deliveries are all remaining deliveries not accepted
+    rejected = [d for d in deliveries if d.id not in accepted_ids]
+    min_rejected_count = len(deliveries) - len(accepted)
+
+    return min_rejected_count, rejected
+
+
 def print_task_a_results(selected: list[Delivery]) -> None:
     """Displays the output in the format specified by Task A."""
     print("--- Task A: Single Driver Schedule ---")
@@ -153,6 +180,17 @@ def print_task_b_results(schedules: dict[int, list[Delivery]]) -> None:
     print(f"\nMinimum drivers required: {len(schedules)}")
 
 
+def print_task_c_results(count: int, rejected: list[Delivery]) -> None:
+    """Displays the output in the format specified by Task C."""
+    print("--- Task C: Rejected Deliveries (One Driver) ---")
+    print(f"Minimum deliveries to reject: {count}")
+    if rejected:
+        rejected_details = ", ".join(f"{d.id}: ({d.start}, {d.finish})" for d in rejected)
+        print(f"Rejected deliveries: {rejected_details}")
+    else:
+        print("Rejected deliveries: None (all deliveries are compatible)")
+
+
 if __name__ == "__main__":
     file_path = sys.argv[1] if len(sys.argv) > 1 else "data/sample.csv"
     print(f"Loading data from: {file_path}")
@@ -167,4 +205,9 @@ if __name__ == "__main__":
     # Task B
     driver_plan = schedule_multiple_drivers(requests)
     print_task_b_results(driver_plan)
+    print()
+
+    # Task C
+    rejected_count, rejected_list = find_min_rejections(requests)
+    print_task_c_results(rejected_count, rejected_list)
 

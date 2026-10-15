@@ -11,7 +11,7 @@ Pioneer Delivery is a local delivery company that receives delivery requests req
 This repository implements the scheduling algorithms for Pioneer Delivery:
 - **Task A:** Maximum Deliveries for One Driver ($O(n \log n)$ Interval Scheduling)
 - **Task B:** Minimum Number of Drivers ($O(n \log n)$ Interval Partitioning with Min-Heap)
-- **Task C:** Interview-Style Variant / Minimum Rejections ($O(n \log n)$) *(In progress)*
+- **Task C:** Interview-Style Variant / Minimum Rejections ($O(n \log n)$)
 - **Task D:** Theoretical Counterexample Analysis for Profit Scheduling *(In progress)*
 
 ---
@@ -20,9 +20,10 @@ This repository implements the scheduling algorithms for Pioneer Delivery:
 
 ```text
 cs413_alg/
-├── delivery_scheduler.py   # Core data structures, file loader, Task A, and Task B schedulers
+├── delivery_scheduler.py   # Core data structures, file loader, Tasks A, B, and C schedulers
 ├── run_task_a_tests.py     # Automated test runner validating Task A required test cases
 ├── run_task_b_tests.py     # Automated test runner validating Task B required test cases
+├── run_task_c_tests.py     # Automated test runner validating Task C required test cases
 ├── data/
 │   ├── sample.csv          # Sample deliveries from project handout (Page 1)
 │   ├── task_a/             # Required Test Cases 1–6 for Task A
@@ -40,6 +41,7 @@ cs413_alg/
 - **`load_deliveries(filepath)`**: Robust parser supporting both CSV files (`id,start,finish`) and whitespace-separated text (`D01 10 13`), safely skipping header rows and comments.
 - **`schedule_single_driver(deliveries)`**: Implements the greedy interval scheduling algorithm for Task A.
 - **`schedule_multiple_drivers(deliveries)`**: Implements interval partitioning with a min-heap for Task B.
+- **`find_min_rejections(deliveries)`**: Computes the minimum deliveries to reject ($n - k$) for Task C.
 
 ---
 
@@ -81,6 +83,7 @@ To automatically execute and verify all required test cases:
 ```bash
 python run_task_a_tests.py   # Runs Task A tests 1-6
 python run_task_b_tests.py   # Runs Task B tests 1-6
+python run_task_c_tests.py   # Runs Task C tests 1-6
 ```
 
 ---
@@ -146,4 +149,35 @@ The greedy algorithm only allocates a new driver (say, driver $k$) when all exis
 | **4** | `(1, 5), (2, 6), (3, 7)` | 3 | 3 | Driver 1: `D1`<br>Driver 2: `D2`<br>Driver 3: `D3` | **PASS** |
 | **5** | `(1, 4), (2, 5), (4, 7), (5, 8)` | 2 | 2 | Driver 1: `D1 D3`<br>Driver 2: `D2 D4` | **PASS** |
 | **6** | `(5, 8), (1, 4), (2, 5), (4, 6), (6, 9)` | 2 | 2 | Driver 1: `D2 D4 D5`<br>Driver 2: `D3 D1` | **PASS** |
+
+---
+
+## 7. Task C: Interview-Style Variant (Min Rejections)
+
+### 1. How is this problem related to Task A?
+Task C is the mathematical complement of Task A:
+- In **Task A**, the goal is to maximize the number of compatible deliveries ($k$) that a single driver can complete without overlap.
+- In **Task C**, any delivery not chosen in that compatible set creates a conflict and must be rejected.
+- Because every non-selected delivery must be rejected to ensure all remaining deliveries are mutually compatible, minimizing the number of rejected deliveries is strictly equivalent to maximizing the number of compatible deliveries kept.
+
+### 2. If the maximum number of compatible deliveries is $k$, how many deliveries must be rejected?
+Exactly **$n - k$** deliveries must be rejected (where $n$ is the total number of delivery requests).
+- Keeping more than $k$ deliveries is impossible without introducing overlaps (by definition of $k$ as the maximum compatible set).
+- Thus, rejecting the remaining $n - k$ deliveries leaves a valid, conflict-free schedule while discarding the absolute minimum number of requests.
+
+### 3. What is the running time of your algorithm?
+- **Sorting & Selection (Task A):** Sorting $n$ deliveries by finish time takes **$O(n \log n)$**, followed by an **$O(n)$** linear pass to pick the $k$ compatible deliveries.
+- **Set Difference:** Identifying the $n - k$ rejected deliveries takes **$O(n)$** using a set of accepted IDs.
+- **Total Running Time:** **$O(n \log n)$**, matching the $O(n \log n)$ optimal bound for LeetCode 435 (*Non-overlapping Intervals*).
+
+### Required Test Case Results (Task C)
+
+| Test | Input Delivery Intervals | Total ($n$) | Expected Rejected | Actual Rejected | Rejected Deliveries | Status |
+| :---: | :--- | :---: | :---: | :---: | :--- | :---: |
+| **1** | No deliveries | 0 | 0 | 0 | None | **PASS** |
+| **2** | `(1, 3)` | 1 | 0 | 0 | None | **PASS** |
+| **3** | `(1, 3), (3, 5), (5, 7)` | 3 | 0 | 0 | None | **PASS** |
+| **4** | `(1, 5), (2, 6), (3, 7)` | 3 | 2 | 2 | `D2(2,6), D3(3,7)` | **PASS** |
+| **5** | `(5, 7), (1, 3), (3, 5), (2, 4)` | 4 | 1 | 1 | `D4(2,4)` | **PASS** |
+| **6** | `(1, 2), (2, 3), (3, 4), (1, 3)` | 4 | 1 | 1 | `D4(1,3)` | **PASS** |
 
