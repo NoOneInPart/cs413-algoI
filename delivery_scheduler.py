@@ -4,6 +4,7 @@ CS 413: Analysis of Algorithms - Portfolio Part I
 """
 
 from dataclasses import dataclass
+import heapq
 import sys
 
 
@@ -73,6 +74,52 @@ def schedule_single_driver(deliveries: list[Delivery]) -> list[Delivery]:
     return selected
 
 
+def schedule_multiple_drivers(deliveries: list[Delivery]) -> dict[int, list[Delivery]]:
+    """
+    Task B: Minimum Number of Drivers (Interval Partitioning).
+
+    Greedy Choice:
+        Sort deliveries by start time. For each delivery, assign it to an
+        available driver who finished earliest. If no driver is currently free,
+        hire a new driver.
+
+    Implementation:
+        Uses a min-heap storing (earliest_finish_time, driver_id) to find
+        the next available driver in O(log k) time.
+
+    Time Complexity:
+        O(n log n) where n is the number of delivery requests.
+    """
+    if not deliveries:
+        return {}
+
+    # 1. Sort deliveries in ascending order of start time
+    sorted_deliveries = sorted(deliveries, key=lambda d: d.start)
+
+    # Min-heap stores: (driver_finish_time, driver_id)
+    driver_heap: list[tuple[int, int]] = []
+    driver_schedules: dict[int, list[Delivery]] = {}
+    driver_counter = 0
+
+    # 2. Assign each delivery to an existing free driver or a new driver
+    for delivery in sorted_deliveries:
+        # Check if the earliest finishing driver is available
+        if driver_heap and driver_heap[0][0] <= delivery.start:
+            # Reuse this driver
+            _, driver_id = heapq.heappop(driver_heap)
+        else:
+            # All active drivers are busy; allocate a new driver
+            driver_counter += 1
+            driver_id = driver_counter
+            driver_schedules[driver_id] = []
+
+        # Assign delivery to driver and update driver's finish time in min-heap
+        driver_schedules[driver_id].append(delivery)
+        heapq.heappush(driver_heap, (delivery.finish, driver_id))
+
+    return driver_schedules
+
+
 def print_task_a_results(selected: list[Delivery]) -> None:
     """Displays the output in the format specified by Task A."""
     print("--- Task A: Single Driver Schedule ---")
@@ -90,12 +137,34 @@ def print_task_a_results(selected: list[Delivery]) -> None:
     print(f"Total deliveries completed: {len(selected)}")
 
 
+def print_task_b_results(schedules: dict[int, list[Delivery]]) -> None:
+    """Displays the driver assignments in the format specified by Task B."""
+    print("--- Task B: Multi-Driver Schedule ---")
+    if not schedules:
+        print("No deliveries to schedule.")
+        print("Minimum drivers required: 0")
+        return
+
+    for driver_id in sorted(schedules.keys()):
+        deliveries = schedules[driver_id]
+        ids = " ".join(d.id for d in deliveries)
+        print(f"Driver {driver_id}: {ids}")
+    
+    print(f"\nMinimum drivers required: {len(schedules)}")
+
+
 if __name__ == "__main__":
     file_path = sys.argv[1] if len(sys.argv) > 1 else "data/sample.csv"
     print(f"Loading data from: {file_path}")
     requests = load_deliveries(file_path)
     print(f"Loaded {len(requests)} delivery requests.\n")
     
+    # Task A
     chosen = schedule_single_driver(requests)
     print_task_a_results(chosen)
+    print()
+
+    # Task B
+    driver_plan = schedule_multiple_drivers(requests)
+    print_task_b_results(driver_plan)
 

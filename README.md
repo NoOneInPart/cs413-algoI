@@ -10,7 +10,7 @@ Pioneer Delivery is a local delivery company that receives delivery requests req
 
 This repository implements the scheduling algorithms for Pioneer Delivery:
 - **Task A:** Maximum Deliveries for One Driver ($O(n \log n)$ Interval Scheduling)
-- **Task B:** Minimum Number of Drivers ($O(n \log n)$ Interval Partitioning with Min-Heap) *(In progress)*
+- **Task B:** Minimum Number of Drivers ($O(n \log n)$ Interval Partitioning with Min-Heap)
 - **Task C:** Interview-Style Variant / Minimum Rejections ($O(n \log n)$) *(In progress)*
 - **Task D:** Theoretical Counterexample Analysis for Profit Scheduling *(In progress)*
 
@@ -20,8 +20,9 @@ This repository implements the scheduling algorithms for Pioneer Delivery:
 
 ```text
 cs413_alg/
-├── delivery_scheduler.py   # Core data structures (Delivery dataclass), file loader, and Task A scheduler
+├── delivery_scheduler.py   # Core data structures, file loader, Task A, and Task B schedulers
 ├── run_task_a_tests.py     # Automated test runner validating Task A required test cases
+├── run_task_b_tests.py     # Automated test runner validating Task B required test cases
 ├── data/
 │   ├── sample.csv          # Sample deliveries from project handout (Page 1)
 │   ├── task_a/             # Required Test Cases 1–6 for Task A
@@ -38,6 +39,7 @@ cs413_alg/
 - **`Delivery` Dataclass**: Models each delivery request with `id` (str), `start` (int), and `finish` (int).
 - **`load_deliveries(filepath)`**: Robust parser supporting both CSV files (`id,start,finish`) and whitespace-separated text (`D01 10 13`), safely skipping header rows and comments.
 - **`schedule_single_driver(deliveries)`**: Implements the greedy interval scheduling algorithm for Task A.
+- **`schedule_multiple_drivers(deliveries)`**: Implements interval partitioning with a min-heap for Task B.
 
 ---
 
@@ -74,10 +76,11 @@ Or with any custom file:
 python delivery_scheduler.py path/to/your_file.csv
 ```
 
-### Run Task A Test Suite
-To automatically execute and verify all required test cases for Task A:
+### Run Task Suites
+To automatically execute and verify all required test cases:
 ```bash
-python run_task_a_tests.py
+python run_task_a_tests.py   # Runs Task A tests 1-6
+python run_task_b_tests.py   # Runs Task B tests 1-6
 ```
 
 ---
@@ -107,3 +110,40 @@ Under the standard **"greedy stays ahead"** property, at every step $i$, the gre
 | **4** | `(1, 5), (2, 6), (3, 7)` | 1 | `1` [D1: (1, 5)] | **PASS** |
 | **5** | `(5, 7), (1, 3), (3, 5), (2, 4)` | 3 | `3` [D2: (1, 3), D3: (3, 5), D1: (5, 7)] | **PASS** |
 | **6** | `(1, 4), (2, 4), (4, 6)` | 2 | `2` [D1: (1, 4), D3: (4, 6)] | **PASS** |
+
+---
+
+## 6. Task B: Minimum Number of Drivers
+
+### 1. What information is stored in the priority queue?
+The priority queue (min-heap) stores tuples of the form `(driver_finish_time, driver_id)`. 
+- `driver_finish_time` is the completion time of the last delivery assigned to that driver.
+- The min-heap property ensures that the driver who becomes available earliest is always at the top (`heap[0]`).
+
+### 2. How is a driver selected for each new delivery?
+Deliveries are processed in ascending order of their start times:
+1. For each delivery, we inspect the driver at the top of the min-heap.
+2. **If that driver finishes at or before the current delivery's start time** (`finish_time <= delivery.start`), that driver is free. We pop them from the heap, assign the current delivery to them, and push them back with their updated finish time.
+3. **If that driver is still busy** (`finish_time > delivery.start`), then *all* active drivers are currently occupied. We hire a new driver, assign the delivery, and push the new driver into the heap.
+
+### 3. Why does this algorithm use the minimum possible number of drivers?
+Let $d$ be the maximum number of mutually overlapping deliveries at any single point in time (known as the **depth** of the interval set). Clearly, no valid schedule can ever use fewer than $d$ drivers because all $d$ deliveries must be handled concurrently.
+
+The greedy algorithm only allocates a new driver (say, driver $k$) when all existing $k-1$ drivers are busy with deliveries that overlap the start time of the current delivery. This means at that exact moment, there are $k$ mutually overlapping deliveries. Therefore, the algorithm never allocates more drivers than the depth $d$. Since $\text{drivers used} = d \le \text{optimal drivers}$, the number of drivers used is guaranteed to be minimal.
+
+### 4. What is the running time?
+- **Sorting:** Sorting $n$ deliveries by start time takes **$O(n \log n)$** time.
+- **Heap Operations:** For each of the $n$ deliveries, we perform at most one `heappop` and one `heappush` on a min-heap containing at most $d \le n$ drivers. Each heap operation takes $O(\log d) \le O(\log n)$ time. Total heap time across all deliveries is $O(n \log d) \le O(n \log n)$.
+- **Total Running Time:** **$O(n \log n)$**, satisfying the project requirements.
+
+### Required Test Case Results (Task B)
+
+| Test | Input Delivery Intervals | Expected Drivers | Actual Drivers | Schedule Assignment | Status |
+| :---: | :--- | :---: | :---: | :--- | :---: |
+| **1** | No deliveries | 0 | 0 | None | **PASS** |
+| **2** | `(1, 3)` | 1 | 1 | Driver 1: `D1` | **PASS** |
+| **3** | `(1, 3), (3, 5), (5, 7)` | 1 | 1 | Driver 1: `D1 D2 D3` | **PASS** |
+| **4** | `(1, 5), (2, 6), (3, 7)` | 3 | 3 | Driver 1: `D1`<br>Driver 2: `D2`<br>Driver 3: `D3` | **PASS** |
+| **5** | `(1, 4), (2, 5), (4, 7), (5, 8)` | 2 | 2 | Driver 1: `D1 D3`<br>Driver 2: `D2 D4` | **PASS** |
+| **6** | `(5, 8), (1, 4), (2, 5), (4, 6), (6, 9)` | 2 | 2 | Driver 1: `D2 D4 D5`<br>Driver 2: `D3 D1` | **PASS** |
+
