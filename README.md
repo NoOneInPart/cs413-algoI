@@ -12,7 +12,7 @@ This repository implements the scheduling algorithms for Pioneer Delivery:
 - **Task A:** Maximum Deliveries for One Driver ($O(n \log n)$ Interval Scheduling)
 - **Task B:** Minimum Number of Drivers ($O(n \log n)$ Interval Partitioning with Min-Heap)
 - **Task C:** Interview-Style Variant / Minimum Rejections ($O(n \log n)$)
-- **Task D:** Theoretical Counterexample Analysis for Profit Scheduling *(In progress)*
+- **Task D:** Theoretical Counterexample Analysis for Profit Scheduling
 
 ---
 
@@ -24,6 +24,7 @@ cs413_alg/
 ├── run_task_a_tests.py     # Automated test runner validating Task A required test cases
 ├── run_task_b_tests.py     # Automated test runner validating Task B required test cases
 ├── run_task_c_tests.py     # Automated test runner validating Task C required test cases
+├── verify_task_d.py        # Verification script for Task D counterexample
 ├── data/
 │   ├── sample.csv          # Sample deliveries from project handout (Page 1)
 │   ├── task_a/             # Required Test Cases 1–6 for Task A
@@ -79,11 +80,12 @@ python delivery_scheduler.py path/to/your_file.csv
 ```
 
 ### Run Task Suites
-To automatically execute and verify all required test cases:
+To automatically execute and verify all required test cases and analyses:
 ```bash
 python run_task_a_tests.py   # Runs Task A tests 1-6
 python run_task_b_tests.py   # Runs Task B tests 1-6
 python run_task_c_tests.py   # Runs Task C tests 1-6
+python verify_task_d.py      # Verifies Task D counterexample values
 ```
 
 ---
@@ -180,4 +182,81 @@ Exactly **$n - k$** deliveries must be rejected (where $n$ is the total number o
 | **4** | `(1, 5), (2, 6), (3, 7)` | 3 | 2 | 2 | `D2(2,6), D3(3,7)` | **PASS** |
 | **5** | `(5, 7), (1, 3), (3, 5), (2, 4)` | 4 | 1 | 1 | `D4(2,4)` | **PASS** |
 | **6** | `(1, 2), (2, 3), (3, 4), (1, 3)` | 4 | 1 | 1 | `D4(1,3)` | **PASS** |
+
+---
+
+## 8. Task D: When a Greedy Choice Fails (Counterexample)
+
+In this variant, flexible same-day deliveries each require 1 unit of driver time. Each delivery $j$ has a ready time $R_j \ge 0$ and distinct profit $P_j > 0$. If delivery $j$ is scheduled in integer time slot $T_j(S) \ge R_j$, its delay is $D_j(S) = T_j(S) - R_j$, yielding value:
+
+$$V_j(S) = \frac{P_j}{1 + D_j(S)}$$
+
+A proposed greedy strategy $G$ processes deliveries in **decreasing order of profit** and assigns each to the **earliest available slot at or after its ready time**.
+
+Below is a simple 3-delivery counterexample proving that this greedy strategy is not always optimal.
+
+---
+
+### 1. Delivery Ready Times and Profits
+
+| Delivery | Ready Time ($R_j$) | Profit ($P_j$) |
+| :---: | :---: | :---: |
+| **A** | 0 | 18 |
+| **B** | 0 | 12 |
+| **C** | 1 | 6 |
+
+*(Note: All profits are distinct: $18 \ne 12 \ne 6 > 0$, and all ready times are nonnegative integers).*
+
+---
+
+### 2. Schedule Produced by Greedy Strategy $G$ and $V(G)$
+
+Greedy processes deliveries in order of decreasing profit: **A ($P=18$) $\rightarrow$ B ($P=12$) $\rightarrow$ C ($P=6$)**:
+
+1. **Delivery A:** Earliest available slot at or after $R_A = 0$ is **Slot 0**.
+   - Slot: $T_A(G) = 0$
+   - Delay: $D_A = 0 - 0 = 0$
+   - Value: $V_A = \frac{18}{1 + 0} = 18$
+2. **Delivery B:** Earliest available slot at or after $R_B = 0$ is **Slot 1** (slot 0 is occupied).
+   - Slot: $T_B(G) = 1$
+   - Delay: $D_B = 1 - 0 = 1$
+   - Value: $V_B = \frac{12}{1 + 1} = 6$
+3. **Delivery C:** Earliest available slot at or after $R_C = 1$ is **Slot 2** (slot 1 is occupied).
+   - Slot: $T_C(G) = 2$
+   - Delay: $D_C = 2 - 1 = 1$
+   - Value: $V_C = \frac{6}{1 + 1} = 3$
+
+$$\mathbf{V(G)} = 18 + 6 + 3 = \mathbf{27}$$
+
+---
+
+### 3. A Better Schedule $S$ and $V(S)$
+
+Consider an alternative schedule $S$ that assigns the slots as follows:
+
+1. **Delivery A** $\rightarrow$ **Slot 0**:
+   - Delay: $D_A = 0 - 0 = 0$
+   - Value: $V_A = \frac{18}{1 + 0} = 18$
+2. **Delivery C** $\rightarrow$ **Slot 1**:
+   - Delay: $D_C = 1 - 1 = 0$
+   - Value: $V_C = \frac{6}{1 + 0} = 6$
+3. **Delivery B** $\rightarrow$ **Slot 2**:
+   - Delay: $D_B = 2 - 0 = 2$
+   - Value: $V_B = \frac{12}{1 + 2} = 4$
+
+All constraints are satisfied ($T_j \ge R_j$ and no two deliveries share a slot).
+
+$$\mathbf{V(S)} = 18 + 6 + 4 = \mathbf{28}$$
+
+---
+
+### 4. Why This Proves $G$ Is Not Always Optimal
+
+Since $\mathbf{V(S) = 28 > 27 = V(G)}$, schedule $S$ produces strictly greater total value than greedy strategy $G$.
+
+**Intuitive Explanation:**
+- Greedy chooses delivery $B$ before $C$ solely because $P_B (12) > P_C (6)$. By greedily taking slot 1 for $B$, it delays $B$ by 1 time unit (reducing its value from 12 to 6) **and** crowds out $C$, forcing $C$ into slot 2 with a delay of 1 (reducing its value from 6 to 3).
+- In contrast, schedule $S$ gives slot 1 to $C$ right when it is ready ($D_C = 0$), capturing $C$'s full value of $6$ (a $+3$ gain over greedy). Delaying $B$ to slot 2 only drops $B$'s value from $6$ to $4$ (a $-2$ loss).
+- The net benefit of letting $C$ take slot 1 is $+3 - 2 = +1$.
+- Because greedy looks only at raw profit rather than how delays impact the marginal rate of return across competing requests, it makes a locally attractive choice that damages the global objective. Hence, $G$ is not always optimal.
 
